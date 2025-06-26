@@ -1,4 +1,43 @@
-# In .gitignore - ignore cache but keep settings
-.zed/*
-!.zed/settings.json
-!.zed/tasks.json
+# === General ===
+.env
+*.env
+*.log
+.DS_Store
+*.pem
+*.orig.*
+*.tsbuildinfo
+
+# === Node / Bun / Expo (frontend/) ===
+node_modules/
+frontend/.expo/
+frontend/.expo-shared/
+frontend/dist/
+frontend/web-build/
+frontend/expo-env.d.ts
+frontend/.metro-health-check*
+frontend/npm-debug.*
+frontend/yarn-debug.*
+frontend/yarn-error.*
+frontend/bun.lockb
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# === Python / FastAPI (backend/) ===
+backend/venv/
+backend/__pycache__/
+backend/*.py[cod]
+backend/.mypy_cache/
+backend/.pytest_cache/
+
+# === Windsurf / IDE ===
+.vscode/
+.zed/
+.idea/
+
+# === Database ===
+*.db
+*.sqlite
+*.sqlite3
