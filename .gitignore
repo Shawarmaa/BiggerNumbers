@@ -1,0 +1,4 @@
+# In .gitignore - ignore cache but keep settings
+.zed/*
+!.zed/settings.json
+!.zed/tasks.json
