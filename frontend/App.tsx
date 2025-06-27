@@ -133,25 +133,41 @@ export default function App() {
   };
 
   const openPlaidLink = async () => {
-    if (!linkToken) return;
+    console.log('🔗 openPlaidLink called');
+    console.log('📄 linkToken:', linkToken);
+    
+    if (!linkToken) {
+      console.log('❌ No link token available');
+      return;
+    }
     
     try {
-      // Create Plaid Link with just token
+      console.log('🏗️ Creating Plaid Link...');
       create({ token: linkToken });
+      console.log('✅ Plaid Link created');
       
-      // Open Plaid Link with callbacks (needs LinkOpenProps)
+      console.log('🚪 Opening Plaid Link...');
       const openProps: LinkOpenProps = {
-        onSuccess: onPlaidSuccess,
-        onExit: onPlaidExit,
+        onSuccess: (success: LinkSuccess) => {
+          console.log('🎉 Plaid SUCCESS:', success);
+          onPlaidSuccess(success);
+        },
+        onExit: (exit: LinkExit) => {
+          console.log('🚪 Plaid EXIT:', exit);
+          // Check if there's an error in the exit
+          if (exit.error) {
+            console.error('❌ Plaid Exit Error:', exit.error);
+          }
+          onPlaidExit(exit);
+        },
       };
       
       open(openProps);
+      console.log('✅ Plaid Link opened');
     } catch (error) {
-      console.error('Error opening Plaid Link:', error);
-      Alert.alert('Error', 'Failed to open bank connection');
+      console.error('💥 FULL Error opening Plaid Link:', error);
     }
   };
-
   const onRefresh = async () => {
     if (accessToken) {
       setRefreshing(true);
