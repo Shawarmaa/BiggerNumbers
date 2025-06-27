@@ -31,7 +31,7 @@ app.add_middleware(
 
 # Plaid configuration
 configuration = Configuration(
-    host=getattr(plaid.Environment, os.getenv('PLAID_ENV', 'sandbox')),
+    host=getattr(plaid.Environment, os.getenv('PLAID_ENV', 'sandbox').capitalize()),
     api_key={
         'clientId': os.getenv('PLAID_CLIENT_ID'),
         'secret': os.getenv('PLAID_SECRET'),
@@ -136,4 +136,4 @@ async def get_spending(access_token: str) -> SpendingResponse:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)

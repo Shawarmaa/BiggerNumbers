@@ -12,11 +12,11 @@ import {
   ScrollView,
 } from 'react-native';
 // Correct imports based on actual exports
-import { create, open, LinkSuccess, LinkExit } from 'react-native-plaid-link-sdk';
+import { create, open, LinkSuccess, LinkExit, LinkOpenProps } from 'react-native-plaid-link-sdk';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://192.168.1.225:8001';
 
 interface SpendingData {
   daily: number;
@@ -137,13 +137,15 @@ export default function App() {
     
     try {
       // Create Plaid Link with just token
-      await create({ token: linkToken });
+      create({ token: linkToken });
       
-      // Open Plaid Link with callbacks
-      await open({
+      // Open Plaid Link with callbacks (needs LinkOpenProps)
+      const openProps: LinkOpenProps = {
         onSuccess: onPlaidSuccess,
         onExit: onPlaidExit,
-      });
+      };
+      
+      open(openProps);
     } catch (error) {
       console.error('Error opening Plaid Link:', error);
       Alert.alert('Error', 'Failed to open bank connection');
