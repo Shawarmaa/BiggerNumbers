@@ -63,13 +63,40 @@ async def create_link_token():
             country_codes=[CountryCode('GB')],
             language='en',
             user=LinkTokenCreateRequestUser(client_user_id='user-id')
+            # Test without redirect_uri first
         )
         
         response = client.link_token_create(request)
         return {"link_token": response['link_token']}
     
     except Exception as e:
+        print(f"Detailed Plaid error: {e}")
         raise HTTPException(status_code=400, detail=f"Error creating link token: {str(e)}")
+
+@app.get("/plaid/callback")
+async def plaid_callback():
+    """Handle Plaid redirect callback - blank page for iOS"""
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>BiggerNumbers - Connection Successful</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+        <h1>✅ Bank Connected Successfully!</h1>
+        <p>You can now close this page and return to the BiggerNumbers app.</p>
+        <script>
+            // Auto-close after 3 seconds
+            setTimeout(() => {
+                window.close();
+            }, 3000);
+        </script>
+    </body>
+    </html>
+    """
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(content=html_content)
 
 @app.post("/exchange_public_token")
 async def exchange_public_token(token_request: PublicTokenRequest):

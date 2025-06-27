@@ -12,11 +12,11 @@ import {
   ScrollView,
 } from 'react-native';
 // Correct imports based on actual exports
-import { create, open, LinkSuccess, LinkExit, LinkOpenProps } from 'react-native-plaid-link-sdk';
+import { create, open, LinkSuccess, LinkExit, LinkOpenProps, destroy } from 'react-native-plaid-link-sdk';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://192.168.1.225:8001';
+const API_BASE_URL = 'http://localhost:8001';
 
 interface SpendingData {
   daily: number;
@@ -132,9 +132,11 @@ export default function App() {
     console.log('Plaid Link exited:', exit);
   };
 
+  // Add state to track if Plaid was completed
+  const [plaidCompleted, setPlaidCompleted] = useState(false);
+
   const openPlaidLink = async () => {
     console.log('🔗 openPlaidLink called');
-    console.log('📄 linkToken:', linkToken);
     
     if (!linkToken) {
       console.log('❌ No link token available');
@@ -143,31 +145,117 @@ export default function App() {
     
     try {
       console.log('🏗️ Creating Plaid Link...');
+      
+      // Clear any existing session first
+      try {
+        await destroy();
+        console.log('🗑️ Previous session destroyed');
+      } catch (e) {
+        console.log('No previous session to destroy');
+      }
+      
+      // Create with token
       create({ token: linkToken });
       console.log('✅ Plaid Link created');
       
       console.log('🚪 Opening Plaid Link...');
-      const openProps: LinkOpenProps = {
-        onSuccess: (success: LinkSuccess) => {
-          console.log('🎉 Plaid SUCCESS:', success);
+      
+      // Open with properly bound callbacks
+      open({
+        onSuccess: (success) => {
+          console.log('🎉 SUCCESS CALLBACK TRIGGERED!');
+          console.log('📄 Full success object:', JSON.stringify(success, null, 2));
+          console.log('📄 Public token:', success.publicToken);
+          console.log('📊 Metadata:', JSON.stringify(success.metadata, null, 2));
+          
+          // Make sure to call the success handler
           onPlaidSuccess(success);
         },
-        onExit: (exit: LinkExit) => {
-          console.log('🚪 Plaid EXIT:', exit);
-          // Check if there's an error in the exit
-          if (exit.error) {
-            console.error('❌ Plaid Exit Error:', exit.error);
+        onExit: (exit) => {
+          console.log('🚪 EXIT CALLBACK TRIGGERED!');
+          console.log('📋 Full exit object:', JSON.stringify(exit, null, 2));
+          console.log('📋 Exit metadata:', exit.metadata);
+          
+          // Check if we got a public token in the exit (sometimes happens)
+          if (exit.metadata && exit.metadata.metadataJson) {
+            try {
+              const parsedMetadata = JSON.parse(exit.metadata.metadataJson);
+              console.log('📊 Parsed metadata:', parsedMetadata);
+              
+              if (parsedMetadata.public_token) {
+                console.log('🎉 Found public token in exit metadata!');
+                const successData = {
+                  publicToken: parsedMetadata.public_token,
+                  metadata: exit.metadata
+                };
+                onPlaidSuccess(successData as unknown as LinkSuccess);
+                return;
+              }
+            } catch (e) {
+              console.log('Failed to parse metadata JSON');
+            }
           }
+          
+          // Check if this was a successful completion
+          if (exit.metadata && exit.metadata.status) {
+            console.log('📊 Exit status:', exit.metadata.status);
+            if (exit.metadata.status === 'connected' || exit.metadata.institution?.name) {
+              console.log('✅ Detected successful connection in exit callback');
+              setPlaidCompleted(true);
+            }
+          }
+          
+          // Check if this was a successful completion or user cancellation
+          if (exit.error && exit.error.errorCode) {
+            console.error('❌ Exit with error:', exit.error);
+            Alert.alert('Connection Failed', exit.error.displayMessage || 'Failed to connect bank account');
+          } else {
+            console.log('ℹ️ User completed or exited Plaid flow');
+            // Set completed flag in case success callback doesn't fire
+            setPlaidCompleted(true);
+          }
+          
           onPlaidExit(exit);
         },
-      };
+      });
       
-      open(openProps);
-      console.log('✅ Plaid Link opened');
+      console.log('✅ Plaid Link opened with callbacks');
+      
     } catch (error) {
-      console.error('💥 FULL Error opening Plaid Link:', error);
+      console.error('💥 Error:', error);
+      Alert.alert('Error', `Failed to open bank connection: ${error}`);
     }
   };
+
+  // Add manual completion handler
+  const handleManualSuccess = async () => {
+    console.log('🔧 Manual success triggered');
+    
+    // Create a fake success object for testing
+    const mockSuccess = {
+      publicToken: 'public-sandbox-' + Math.random().toString(36).substr(2, 9),
+      metadata: {
+        institution: { id: 'ins_test', name: 'First Platypus Bank' },
+        accounts: [{ id: 'acc_test', name: 'Plaid Current Account' }]
+      }
+    };
+    
+    Alert.alert(
+      'Plaid Flow Completed',
+      'It looks like you completed the bank connection. Continue with a test token?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Continue', 
+          onPress: () => {
+            setPlaidCompleted(false);
+            onPlaidSuccess(mockSuccess as LinkSuccess);
+          }
+        }
+      ]
+    );
+  };
+
   const onRefresh = async () => {
     if (accessToken) {
       setRefreshing(true);
@@ -226,6 +314,16 @@ export default function App() {
           ) : (
             <TouchableOpacity style={styles.disabledButton} disabled>
               <Text style={styles.connectButtonText}>Loading...</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Show manual continue button if Plaid completed */}
+          {plaidCompleted && (
+            <TouchableOpacity
+              style={[styles.connectButton, { backgroundColor: '#28a745', marginTop: 10 }]}
+              onPress={handleManualSuccess}
+            >
+              <Text style={styles.connectButtonText}>✅ Continue with Connection</Text>
             </TouchableOpacity>
           )}
 
